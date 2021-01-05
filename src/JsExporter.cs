@@ -1,7 +1,6 @@
-﻿/**
+/**
  * File: JsExporter.cs
- * Eco Version: 8.2.8
- * JsExporter Version: 1.1
+ * Eco Version: 9.x
  * 
  * Author: koka
  * 
@@ -15,10 +14,8 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using Eco.Core.Plugins.Interfaces;
-using Eco.Gameplay.Components;
 using Eco.Gameplay.DynamicValues;
 using Eco.Gameplay.Items;
-using Eco.Gameplay.Objects;
 using Eco.Shared;
 using Eco.Shared.Localization;
 using Newtonsoft.Json;
@@ -43,24 +40,30 @@ namespace JsExporter
 
                 Localizer.TrySetLanguage(language);
                 JObject localization = new JObject();
-                result["Localization"][language.GetLocDisplayName()] = localization;
+                result["Localization"][language.GetLocDisplayName().ToString()] = localization;
 
                 foreach (Item item in Item.AllItems)
                 {
                     localization[item.Type.Name] = (string)item.DisplayName;
                 }
 
-                foreach (Recipe recipe in Recipe.AllRecipes)
+                foreach (RecipeFamily family in RecipeFamily.AllRecipes)
                 {
-                    localization[recipe.GetType().Name] = (string)recipe.DisplayName;
+                    foreach (Recipe recipe in family.Recipes)
+                    {
+                        localization[recipe.GetType().Name] = (string)recipe.DisplayName;
+                    }
                 }
             }
 
             JObject recipes = new JObject();
             result["Recipes"] = recipes;
-            foreach (Recipe recipe in Recipe.AllRecipes)
+            foreach (RecipeFamily family in RecipeFamily.AllRecipes)
             {
-                recipes[recipe.GetType().Name] = ProcessRecipeType(recipe);
+                foreach (Recipe recipe in family.Recipes)
+                {
+                    recipes[recipe.GetType().Name] = ProcessRecipeType(recipe);
+                }
             }
 
             using (TextWriter textWriter = new StreamWriter("config.json"))
@@ -91,8 +94,8 @@ namespace JsExporter
 
             _usedSkill = null;
             bool first = true;
-            Logger.Assert(recipe.Products.Length > 0, "Products array should be not empty");
-            foreach (var craftingElement in recipe.Products)
+            // assert(recipe.Items.Count > 0, "Products array should be not empty");
+            foreach (var craftingElement in recipe.Items)
             {
                 string name = craftingElement.Item.Type.Name;
                 if (first)
@@ -109,6 +112,7 @@ namespace JsExporter
 
             foreach (var craftingElement in recipe.Ingredients)
             {
+                if (craftingElement.Item == null) { continue;  }
                 string name = craftingElement.Item.Type.Name;
                 result["ingredients"][name] = EvaluateDynamicValue(craftingElement.Quantity);
             }
@@ -117,16 +121,6 @@ namespace JsExporter
             {
                 result["skill"] = _usedSkill;
             }
-
-            foreach (var tableType in CraftingComponent.TablesForRecipe(typeof(Recipe)))
-            {
-                Logger.Assert(tableType.IsSubclassOf(typeof(WorldObject)), $"{tableType} is not a world object");
-                foreach (RequireComponentAttribute attribute in tableType.GetCustomAttributes(typeof(RequireComponentAttribute), true))
-                {
-                    
-                }
-            }
-
 
             return result;
         }
@@ -159,7 +153,13 @@ namespace JsExporter
                 return $"talents[\"{talentValue.TalentType.Name}\"] ? {talentValue.Talent.Value.ToString(CultureInfo.InvariantCulture)} : {talentValue.BaseValue.ToString(CultureInfo.InvariantCulture)}";
             }
 
+            if (value is ModuleModifiedValue moduleModifiedValue)
+            {
+                return $"modules[\"{moduleModifiedValue.ValueTypeName}\"] ? {moduleModifiedValue.GetBaseValue.ToString(CultureInfo.InvariantCulture)} : 1";
+            }
+
             throw new Exception($"Can't evaluate value {value}");
         }
     }
 }
+
