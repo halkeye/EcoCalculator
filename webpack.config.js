@@ -32,8 +32,9 @@ module.exports = {
     plugins: [
         new HtmlWebpackPlugin({
             title: 'Eco production calculator',
+            template: './src/index.html',
             inject: true
         }),
-        new HtmlWebpackRootPlugin(),
+        // new HtmlWebpackRootPlugin(),
     ]
 };

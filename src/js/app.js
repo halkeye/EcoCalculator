@@ -50,10 +50,10 @@ export default class App extends React.Component {
                 (result) => {
                     Object.keys(result['Recipes']).map(function(recipeName){
                         const recipeData = result['Recipes'][recipeName];
-                        recipeData['quantity'] = new Function('skills', 'talents', 'return ' + recipeData['quantity']);
+                        recipeData['quantity'] = new Function('skills', 'talents', 'modules', 'return ' + recipeData['quantity']);
                         Object.keys(recipeData['ingredients']).map(function(ingredientName){
                             recipeData['ingredients'][ingredientName] =
-                                new Function('skills', 'talents', 'return ' + recipeData['ingredients'][ingredientName]);
+                                new Function('skills', 'talents', 'modules', 'return ' + recipeData['ingredients'][ingredientName]);
                         });
                     });
                     this.setState({

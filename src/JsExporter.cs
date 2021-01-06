@@ -16,6 +16,7 @@ using System.Linq;
 using Eco.Core.Plugins.Interfaces;
 using Eco.Gameplay.DynamicValues;
 using Eco.Gameplay.Items;
+using Eco.Gameplay.Skills;
 using Eco.Shared;
 using Eco.Shared.Localization;
 using Newtonsoft.Json;
@@ -44,14 +45,14 @@ namespace JsExporter
 
                 foreach (Item item in Item.AllItems)
                 {
-                    localization[item.Type.Name] = (string)item.DisplayName;
+                    localization[item.Name] = (string)item.DisplayName;
                 }
 
                 foreach (RecipeFamily family in RecipeFamily.AllRecipes)
                 {
                     foreach (Recipe recipe in family.Recipes)
                     {
-                        localization[recipe.GetType().Name] = (string)recipe.DisplayName;
+                        localization[recipe.Name] = (string)recipe.DisplayName;
                     }
                 }
             }
@@ -62,15 +63,20 @@ namespace JsExporter
             {
                 foreach (Recipe recipe in family.Recipes)
                 {
-                    recipes[recipe.GetType().Name] = ProcessRecipeType(recipe);
+                    JToken json = ProcessRecipeType(recipe);
+                    json["skills"] = new JArray();
+                    foreach (RequiresSkillAttribute req in family.RequiredSkills) {
+                        ((JArray)json["skills"]).Add(req.SkillItem.Name);
+                    }
+                    recipes[recipe.Name] = json;
                 }
             }
 
             using (TextWriter textWriter = new StreamWriter("config.json"))
-            using (JsonWriter jsonWriter = new JsonTextWriter(textWriter))
             {
-                result.WriteTo(jsonWriter);
+                textWriter.Write(JsonConvert.SerializeObject(result, Formatting.Indented));
             }
+            return;
         }
 
         /// <inheritdoc />
@@ -97,7 +103,7 @@ namespace JsExporter
             // assert(recipe.Items.Count > 0, "Products array should be not empty");
             foreach (var craftingElement in recipe.Items)
             {
-                string name = craftingElement.Item.Type.Name;
+                string name = craftingElement.Item.Name;
                 if (first)
                 {
                     first = false;
@@ -113,7 +119,7 @@ namespace JsExporter
             foreach (var craftingElement in recipe.Ingredients)
             {
                 if (craftingElement.Item == null) { continue;  }
-                string name = craftingElement.Item.Type.Name;
+                string name = craftingElement.Item.Name;
                 result["ingredients"][name] = EvaluateDynamicValue(craftingElement.Quantity);
             }
 

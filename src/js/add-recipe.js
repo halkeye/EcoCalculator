@@ -13,6 +13,7 @@ export default class AddRecipe extends React.Component {
     }
 
     handleChange(selected){
+        debugger;
         this.props.onAddRecipe(selected[0].id);
         this.typeahead.current.clear();
     }
@@ -20,12 +21,10 @@ export default class AddRecipe extends React.Component {
     render() {
         const localization = this.props.localization;
         const options = this.props.recipes
-            .map(function(value){
-                return {id:value, label: localization[value]};
-            })
-            .sort(function(a, b){
-                return a.label.localeCompare(b.label);
-            });
+            .filter(value => localization[value])
+            .map(value => ({id:value, label: localization[value]}))
+            .sort((a,b) => a.label.localeCompare(b.label));
+        console.log('handle', this.handleChange);
 
         return (
             <Col>

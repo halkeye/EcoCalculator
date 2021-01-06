@@ -28,12 +28,9 @@ export default class Calculator extends React.Component {
         this.handleAddRecipe = this.handleAddRecipe.bind(this);
         this.handleRemoveRecipe = this.handleRemoveRecipe.bind(this);
 
-        const allSkills = {};
-        Object.keys(props.config.Recipes).forEach(recipe => {
-            if(typeof props.config.Recipes[recipe].skill === 'undefined')
-                return;
-
-            allSkills[props.config.Recipes[recipe].skill] = 1;
+        const allSkills = [];
+        Object.values(props.config.Recipes).forEach(recipe => {
+          allSkills.push(...recipe.skills || [])
         });
 
         const languages = Object.keys(this.props.config.Localization);
@@ -41,7 +38,7 @@ export default class Calculator extends React.Component {
         this.state = {
             selectedRecipes: Map(),
             restRecipes: Object.keys(this.props.config.Recipes),
-            allSkills: Object.keys(allSkills),
+            allSkills: Array.from(new Set(allSkills)),
             skills: Map(),
             ingredients: {},
             languages: languages,
@@ -95,7 +92,7 @@ export default class Calculator extends React.Component {
             const recipes = props.config.Recipes;
 
             state.restRecipes
-                .filter(recipe => recipes[recipe].skill === skillName)
+                .filter(recipe => recipes[recipe].skills.includes(skillName))
                 .forEach(recipe => {
                     selectedRecipes = selectedRecipes.update(
                         recipes[recipe].result,
@@ -120,7 +117,7 @@ export default class Calculator extends React.Component {
         this.setState((state, props) => {
             return {selectedRecipes:
                     state.selectedRecipes
-                        .map((recipes) => recipes.filterNot((price, recipe) => props.config.Recipes[recipe].skill === skillName))
+                        .map((recipes) => recipes.filterNot((price, recipe) => props.config.Recipes[recipe].skills.includes(skillName)))
                         .filter((recipes) => recipes.size > 0)
             };
         });
@@ -203,11 +200,9 @@ export default class Calculator extends React.Component {
         let usedSkills = Set().withMutations(usedSkills => {
             selectedRecipes.valueSeq().forEach((recipes) => {
                 recipes.keySeq().forEach((recipe) => {
-                    const skillName = props.config.Recipes[recipe].skill;
-                    if(typeof skillName === 'undefined')
-                        return;
-
-                    usedSkills.add(skillName);
+                    if (props.config.Recipes[recipe].skills.length) {
+                        usedSkills.add(...props.config.Recipes[recipe].skills);
+                    }
                 });
             });
         });
@@ -307,6 +302,7 @@ export default class Calculator extends React.Component {
         const ingredientPrices = {};
         const talents = {};
         const skills = {};
+        const modules = {};
 
         state.skills.entrySeq().forEach(([skillName, skillData]) => {
             skills[skillName] = skillData.get('value');
@@ -339,13 +335,13 @@ export default class Calculator extends React.Component {
                             return;
                         }
 
-                        price += ingredientPrices[ingredient] * props.config.Recipes[recipe].ingredients[ingredient](skills, talents);
+                        price += ingredientPrices[ingredient] * props.config.Recipes[recipe].ingredients[ingredient](skills, talents, modules);
                     });
 
                     if(!allIngredientsKnown)
                         return;
 
-                    price /= props.config.Recipes[recipe].quantity(skills, talents);
+                    price /= props.config.Recipes[recipe].quantity(skills, talents, modules);
 
                     const product = props.config.Recipes[recipe].result;
                     selectedRecipes = selectedRecipes.setIn([product, recipe], price);
